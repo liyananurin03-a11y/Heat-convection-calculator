@@ -1,0 +1,385 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Internal Forced Convection Calculator</title>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <style>
+        :root {
+            --pink-dark: #880E4F;
+            --pink-light: #FCE4EC;
+            --charcoal: #2D3436;
+            --slate: #64748B;
+            --border: #E2E8F0;
+            --bg-side: #FFFFFF;
+            --bg-main: #F9FAFB;
+        }
+
+        body, html {
+            margin: 0; padding: 0;
+            font-family: 'Inter', sans-serif;
+            background-color: var(--bg-main);
+            color: var(--charcoal);
+            height: 100vh; overflow: hidden;
+        }
+
+        .split-screen { display: flex; height: 100vh; width: 100vw; }
+
+        /* LEFT PANEL STYLE */
+        .side-panel {
+            width: 400px; min-width: 350px;
+            background: var(--bg-side);
+            display: flex; flex-direction: column;
+            padding: 25px; box-sizing: border-box;
+            border-right: 1px solid var(--border);
+            z-index: 10;
+        }
+
+        .panel-header h1 { font-size: 1.3rem; margin: 0; color: var(--charcoal); font-weight: 700; }
+        .tagline { color: var(--slate); font-size: 0.85rem; margin-top: 5px; margin-bottom: 15px; }
+
+        /* INPUT STYLING */
+        .preset-section label, .input-group label {
+            font-size: 0.7rem; font-weight: 700; color: var(--slate);
+            text-transform: uppercase; margin-bottom: 6px; display: block;
+        }
+
+        .preset-buttons { display: flex; gap: 8px; margin-bottom: 20px; }
+        .preset-btn { 
+            flex: 1; padding: 8px; border-radius: 6px; border: none;
+            background: var(--pink-light); color: var(--pink-dark);
+            font-weight: 600; cursor: pointer; transition: 0.2s; font-size: 0.8rem;
+        }
+        .preset-btn:hover { background: var(--pink-dark); color: white; }
+
+        .input-scroll-area { 
+            flex: 1; overflow-y: auto; padding-right: 10px; 
+            background: #F8FAFC; padding: 15px; border-radius: 12px;
+        }
+
+        input, select { 
+            width: 100%; padding: 10px; border: 1.5px solid var(--border); 
+            border-radius: 8px; font-size: 0.9rem; margin-bottom: 12px; box-sizing: border-box;
+        }
+
+        .input-row { display: flex; gap: 10px; }
+        .input-row .input-group { flex: 1; }
+
+        .unit-box { display: flex; }
+        .unit-box input { border-top-right-radius: 0; border-bottom-right-radius: 0; margin-bottom: 0; }
+        .unit-box select { width: 85px; border-left: none; border-top-left-radius: 0; border-bottom-left-radius: 0; margin-bottom: 0; background: #FFF; }
+
+        /* RESIZER */
+        .resizer { width: 8px; cursor: col-resize; background: transparent; transition: 0.2s; }
+        .resizer:hover { background: var(--pink-light); }
+
+        /* MAIN CONTENT */
+        .main-content { flex: 1; padding: 40px; display: flex; flex-direction: column; align-items: center; overflow-y: auto; }
+
+        .result-card, .history-card {
+            background: white; width: 100%; max-width: 600px;
+            padding: 30px; border-radius: 16px;
+            box-shadow: 0 4px 20px rgba(0,0,0,0.05);
+            margin-bottom: 25px; animation: fadeIn 0.4s ease;
+        }
+
+        .card-title { 
+            color: var(--pink-dark); font-size: 1.1rem; font-weight: 700;
+            border-bottom: 2px solid var(--pink-light); padding-bottom: 10px; margin-bottom: 20px; 
+        }
+
+        .res-item { 
+            display: flex; justify-content: space-between; padding: 12px 0; 
+            border-bottom: 1px solid #F1F5F9; font-size: 0.95rem;
+        }
+        .res-item span { color: var(--slate); font-weight: 500; }
+        .res-item b { color: var(--charcoal); }
+
+        .history-card { padding: 20px; overflow-x: auto; }
+        table { width: 100%; border-collapse: collapse; min-width: 400px; }
+        th { text-align: left; padding: 10px; color: var(--slate); border-bottom: 2px solid var(--pink-light); font-size: 0.8rem; }
+        td { padding: 10px; border-bottom: 1px solid #F1F5F9; font-size: 0.85rem; }
+
+        .action-footer { display: flex; gap: 10px; margin-top: 15px; }
+        .calc-btn { flex: 2; background: var(--charcoal); color: white; border: none; padding: 14px; border-radius: 8px; font-weight: 700; cursor: pointer; }
+        .reset-btn { flex: 1; background: #F1F5F9; color: var(--slate); border: none; border-radius: 8px; cursor: pointer; font-weight: 600; }
+        
+        .print-fab { position: fixed; bottom: 30px; right: 30px; background: #B06A7B; color: white; border: none; padding: 12px 25px; border-radius: 50px; cursor: pointer; font-weight: 600; box-shadow: 0 4px 12px rgba(0,0,0,0.1); }
+
+        .placeholder { text-align: center; color: #94A3B8; margin-top: 10vh; }
+        .placeholder-icon { font-size: 4rem; color: var(--pink-light); margin-bottom: 10px; }
+
+        /* RESPONSIVE DESIGN */
+        @media (max-width: 850px) {
+            .split-screen { flex-direction: column; overflow-y: auto; height: auto; }
+            .side-panel { width: 100%; height: auto; border-right: none; border-bottom: 1px solid var(--border); }
+            .resizer { display: none; }
+            .main-content { padding: 20px; height: auto; }
+            body, html { overflow-y: auto; height: auto; }
+        }
+
+        @keyframes fadeIn { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: translateY(0); } }
+        @media print { .no-print { display: none !important; } .side-panel { display: none; } .main-content { padding: 0; width: 100%; } }
+    </style>
+</head>
+<body>
+    <div class="split-screen" id="split-wrapper">
+        <aside class="side-panel no-print" id="left-panel">
+            <header class="panel-header">
+                <h1>Heat Loss Calculator</h1>
+                <p class="tagline">Internal Forced Convection Analysis</p>
+            </header>
+
+            <div class="preset-section">
+                <label>Fluid Presets (at 300K)</label>
+                <div class="preset-buttons">
+                    <button type="button" class="preset-btn" onclick="setPreset('water')">Water</button>
+                    <button type="button" class="preset-btn" onclick="setPreset('air')">Air</button>
+                    <button type="button" class="preset-btn" onclick="setPreset('engine_oil')">Oil</button>
+                </div>
+            </div>
+
+            <div class="input-scroll-area">
+                <div class="input-group">
+                    <label>Pipe Shape (Smooth)</label>
+                    <select id="shape" onchange="toggleShapeInputs()">
+                        <option value="circular">Circular Pipe</option>
+                        <option value="square">Square Duct</option>
+                        <option value="rectangular">Rectangular Duct</option>
+                    </select>
+                </div>
+
+                <div class="input-group">
+                    <label>Flow Condition</label>
+                    <select id="condition">
+                        <option value="fully_developed">Fully Developed</option>
+                        <option value="thermal_entry">Developing (Thermal Entry)</option>
+                        <option value="combined_entry">Developing (Combined Entry)</option>
+                    </select>
+                </div>
+
+                <div class="input-row">
+                    <div class="input-group">
+                        <label id="label-a">Diameter (D)</label>
+                        <div class="unit-box">
+                            <input type="number" id="dim-a" placeholder="0.0">
+                            <select id="unit-a">
+                                <option value="1">m</option>
+                                <option value="0.01">cm</option>
+                                <option value="0.001">mm</option>
+                            </select>
+                        </div>
+                    </div>
+                    <div class="input-group" id="dim-b-group" style="display:none;">
+                        <label>Width (b)</label>
+                        <div class="unit-box">
+                            <input type="number" id="dim-b" placeholder="0.0">
+                            <select id="unit-b">
+                                <option value="1">m</option>
+                                <option value="0.01">cm</option>
+                            </select>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="input-group"><label>Pipe Length (L) [m]</label><input type="number" id="length" placeholder="m"></div>
+
+                <div class="input-row">
+                    <div class="input-group"><label>Inlet Ti [°C]</label><input type="number" id="ti" placeholder="°C"></div>
+                    <div class="input-group"><label>Surface Ts [°C]</label><input type="number" id="ts" placeholder="°C"></div>
+                </div>
+
+                <div class="input-row">
+                    <div class="input-group"><label>Velocity [m/s]</label><input type="number" id="velocity" placeholder="m/s"></div>
+                    <div class="input-group"><label>Mass Flow [kg/s]</label><input type="number" id="m_dot" placeholder="kg/s"></div>
+                </div>
+
+                <div class="input-row">
+                    <div class="input-group"><label>Density [kg/m³]</label><input type="number" id="density"></div>
+                    <div class="input-group"><label>Viscosity [kg/m·s]</label><input type="number" id="viscosity"></div>
+                </div>
+
+                <div class="input-row">
+                    <div class="input-group"><label>Prandtl (Pr)</label><input type="number" id="prandtl"></div>
+                    <div class="input-group"><label>Conductivity (k)</label><input type="number" id="conductivity"></div>
+                </div>
+                
+                <div class="input-group"><label>Specific Heat (cp) [J/kg·K]</label><input type="number" id="cp"></div>
+            </div>
+
+            <div class="action-footer">
+                <button onclick="calculateFlow()" class="calc-btn">Analyze Flow</button>
+                <button onclick="resetFields()" class="reset-btn">Reset</button>
+            </div>
+        </aside>
+
+        <div class="resizer no-print" id="drag-bar"></div>
+
+        <main class="main-content" id="right-panel">
+            <div id="results-placeholder" class="placeholder">
+                <div class="placeholder-icon">⌬</div>
+                <h2>Ready for Analysis</h2>
+                <p>Enter parameters to calculate Heat Loss (Q̇).</p>
+            </div>
+
+            <div id="results" class="results-container" style="display:none; width: 100%;"></div>
+            
+            <div id="history-section" class="history-card" style="display:none;">
+                <h3 class="card-title">Comparison History</h3>
+                <table>
+                    <thead>
+                        <tr>
+                            <th>Shape</th>
+                            <th>Flow Type</th>
+                            <th>Re</th>
+                            <th>Nu</th>
+                            <th>Q̇ (W)</th>
+                        </tr>
+                    </thead>
+                    <tbody id="history-body"></tbody>
+                </table>
+                <button onclick="clearHistory()" class="reset-btn no-print" style="margin-top:15px; width: auto; padding: 8px 15px;">Clear History</button>
+            </div>
+            
+            <button onclick="window.print()" class="print-fab no-print">Export Report (PDF)</button>
+        </main>
+    </div>
+
+    <script>
+        // --- RESIZER ---
+        const leftPanel = document.getElementById('left-panel');
+        const dragBar = document.getElementById('drag-bar');
+        if (dragBar) {
+            dragBar.addEventListener('mousedown', (e) => {
+                document.addEventListener('mousemove', resize);
+                document.addEventListener('mouseup', stopResize);
+            });
+        }
+        function resize(e) { if (window.innerWidth > 850) leftPanel.style.width = e.clientX + 'px'; }
+        function stopResize() { document.removeEventListener('mousemove', resize); }
+
+        // --- DATA & LOGIC ---
+        const materialData = {
+            water: { rho: 997, mu: 0.000891, k: 0.607, pr: 6.14, cp: 4180 },
+            air: { rho: 1.184, mu: 0.0000185, k: 0.0255, pr: 0.73, cp: 1007 },
+            engine_oil: { rho: 884, mu: 0.486, k: 0.145, pr: 6400, cp: 1900 }
+        };
+
+        function setPreset(mat) {
+            const d = materialData[mat];
+            document.getElementById('density').value = d.rho;
+            document.getElementById('viscosity').value = d.mu;
+            document.getElementById('conductivity').value = d.k;
+            document.getElementById('prandtl').value = d.pr;
+            document.getElementById('cp').value = d.cp;
+        }
+
+        function toggleShapeInputs() {
+            const shape = document.getElementById('shape').value;
+            document.getElementById('dim-b-group').style.display = (shape === 'rectangular') ? 'block' : 'none';
+            document.getElementById('label-a').innerText = (shape === 'circular') ? "Diameter (D)" : "Height (a)";
+        }
+
+        function calculateFlow() {
+            const unitA = parseFloat(document.getElementById('unit-a').value);
+            const a = parseFloat(document.getElementById('dim-a').value) * unitA;
+            const b = (parseFloat(document.getElementById('dim-b').value) || 0) * (parseFloat(document.getElementById('unit-b')?.value) || 1);
+            const shape = document.getElementById('shape').value;
+            const cond = document.getElementById('condition').value;
+            const rho = parseFloat(document.getElementById('density').value);
+            const mu = parseFloat(document.getElementById('viscosity').value);
+            const L = parseFloat(document.getElementById('length').value);
+            const k = parseFloat(document.getElementById('conductivity').value);
+            const Pr = parseFloat(document.getElementById('prandtl').value);
+            const Ti = parseFloat(document.getElementById('ti').value);
+            const Ts = parseFloat(document.getElementById('ts').value);
+            const cp = parseFloat(document.getElementById('cp').value);
+
+            let Dh, Ac, P_p;
+            if (shape === 'circular') { Dh = a; Ac = (Math.PI * a**2)/4; P_p = Math.PI * a; }
+            else { 
+                Ac = (shape === 'square') ? a * a : a * b;
+                P_p = (shape === 'square') ? 4 * a : 2 * (a + b);
+                Dh = (4 * Ac) / P_p;
+            }
+
+            let V = parseFloat(document.getElementById('velocity').value);
+            let m_dot = parseFloat(document.getElementById('m_dot').value);
+            if (isNaN(V) && !isNaN(m_dot)) V = m_dot / (rho * Ac); 
+            else if (!isNaN(V)) m_dot = rho * V * Ac;
+
+            if ([Dh, V, rho, mu, k, Pr, Ti, Ts, cp, L].some(isNaN) || L <= 0) { 
+                alert("Please fill all properties correctly."); return; 
+            }
+
+            const Re = (rho * V * Dh) / mu;
+            const isLaminar = Re <= 2300;
+            const flowType = isLaminar ? "Laminar" : "Turbulent";
+
+            // NUSSELT NUMBER CALCULATION
+            let Nu = 0;
+            if (isLaminar) {
+                if (cond === 'fully_developed') Nu = 3.66;
+                else {
+                    // Hausen correlation for developing laminar flow
+                    Nu = 3.66 + (0.0668 * (Dh/L) * Re * Pr) / (1 + 0.04 * Math.pow((Dh/L) * Re * Pr, 2/3));
+                }
+            } else {
+                // Turbulent: Dittus-Boelter. Cooling if Ts < Ti (n=0.3), Heating if Ts > Ti (n=0.4)
+                const n = (Ts > Ti) ? 0.4 : 0.3;
+                Nu = 0.023 * Math.pow(Re, 0.8) * Math.pow(Pr, n);
+            }
+
+            const h = (Nu * k) / Dh;
+            // Exit Temperature
+            const Te = Ts - (Ts - Ti) * Math.exp(-(h * P_p * L) / (m_dot * cp));
+            
+            // LMTD Calculation
+            const dT1 = Ts - Ti;
+            const dT2 = Ts - Te;
+            let LMTD = (dT1 - dT2) / Math.log(Math.abs(dT1 / dT2));
+            if (isNaN(LMTD) || !isFinite(LMTD)) LMTD = dT1;
+
+            // Heat Rate Q = m_dot * cp * (Te - Ti)
+            const Q = m_dot * cp * (Te - Ti);
+
+            document.getElementById('results-placeholder').style.display = 'none';
+            const res = document.getElementById('results');
+            res.style.display = 'block';
+            res.innerHTML = `
+                <div class="result-card">
+                    <h3 class="card-title">Analysis Report</h3>
+                    <div class="res-item"><span>Flow Type</span> <b style="color:${isLaminar?'#2980b9':'#c0392b'}">${flowType}</b></div>
+                    <div class="res-item"><span>Reynolds Number (Re)</span> <b>${Re.toFixed(0)}</b></div>
+                    <div class="res-item"><span>Mass Flow Rate (ṁ)</span> <b>${m_dot.toExponential(3)} kg/s</b></div>
+                    <div class="res-item"><span>Nusselt Number (Nu)</span> <b>${Nu.toFixed(2)}</b></div>
+                    <div class="res-item"><span>Conv. Coeff (h)</span> <b>${h.toFixed(2)} W/m²·K</b></div>
+                    <div class="res-item"><span>Inlet Temperature (Ti)</span> <b>${Ti.toFixed(1)} °C</b></div>
+                    <div class="res-item"><span>Exit Temperature (Te)</span> <b>${Te.toFixed(2)} °C</b></div>
+                    <div class="res-item"><span>LMTD</span> <b>${LMTD.toFixed(2)} °C</b></div>
+                    <div class="res-item" style="background:var(--pink-light); border-radius:8px; padding:15px; margin-top:10px;">
+                        <span>Rate of Heat Loss (Q̇)</span> <b style="color:var(--pink-dark); font-size:1.2rem;">${Q.toFixed(1)} W</b>
+                    </div>
+                </div>
+            `;
+
+            document.getElementById('history-section').style.display = 'block';
+            const tbody = document.getElementById('history-body');
+            const row = tbody.insertRow(0);
+            row.innerHTML = `<td>${shape}</td><td>${flowType}</td><td>${Re.toFixed(0)}</td><td>${Nu.toFixed(2)}</td><td>${Q.toFixed(1)}</td>`;
+        }
+
+        function resetFields() {
+            document.querySelectorAll('input').forEach(i => i.value = '');
+            document.getElementById('results').style.display = 'none';
+            document.getElementById('results-placeholder').style.display = 'block';
+        }
+
+        function clearHistory() {
+            document.getElementById('history-body').innerHTML = '';
+            document.getElementById('history-section').style.display = 'none';
+        }
+    </script>
+</body>
+</html>
